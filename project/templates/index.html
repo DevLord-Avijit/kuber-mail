@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>DevLord Avijit — Payment Checkout</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#f3f7ff;
+    --card:#ffffff;
+    --accent:#0b63d7;
+    --muted:#6b7280;
+    --success:#2bb673;
+    --danger:#e24b4b;
+    --glass: rgba(255,255,255,0.6);
+    --shadow: 0 10px 30px rgba(8,35,70,0.08);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:"Poppins",sans-serif;background:linear-gradient(180deg,#eaf3ff 0%, #f8fbff 100%);color:#0f1724}
+  a{color:var(--accent); text-decoration:none}
+  .wrap{max-width:1150px;margin:28px auto;padding:18px;}
+
+/* Top header */
+  header.topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:16px;padding:14px 20px;border-radius:12px;background:linear-gradient(90deg,#ffffff, #f7fbff);
+    box-shadow:var(--shadow);
+  }
+  .brand {
+    display:flex;align-items:center;gap:14px;
+  }
+  .brand .logo {
+    width:48px;height:48px;border-radius:12px;background:linear-gradient(145deg,var(--accent),#2080ff);
+    display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;box-shadow:0 6px 18px rgba(11,99,215,0.18);
+  }
+  .brand .title {font-weight:600;font-size:18px}
+  .brand .sub {font-size:13px;color:var(--muted)}
+
+  .top-actions {display:flex; gap:12px; align-items:center;}
+  .badge {font-size:13px;padding:8px 12px;border-radius:10px;background:#eef6ff;color:var(--accent);border:1px solid rgba(11,99,215,0.06);box-shadow:0 6px 18px rgba(11,99,215,0.04)}
+  .small-muted{font-size:13px;color:var(--muted)}
+
+/* Success banner (persistent) */
+  .success-banner {
+    display:none;
+    margin-top:12px;
+    padding:12px 16px;
+    border-radius:10px;
+    background:linear-gradient(90deg, rgba(43,182,115,0.08), rgba(11,99,215,0.03));
+    color:var(--success);
+    border:1px solid rgba(43,182,115,0.12);
+    font-weight:700;
+    box-shadow:0 8px 30px rgba(43,182,115,0.03);
+  }
+
+/* Main container - we intentionally allow only one visible "section" at a time.
+   - default state (no active session): show the form section (right-panel) as full width
+   - session-active state: show the dashboard section (left-panel) as full width
+*/
+  .main {
+    margin-top:18px;
+  }
+  .panel {
+    background:var(--card); border-radius:var(--radius); padding:24px; box-shadow:var(--shadow);
+  }
+
+/* === RIGHT PANEL (form) - visible on initial page load === */
+  .right-panel { display:block; width:100%; }
+
+/* === LEFT PANEL (dashboard) - hidden by default; becomes full-width dashboard when session starts === */
+  .left-panel { display:none; width:100%; }
+
+/* When session is active, hide the form and show the dashboard (single-section mode) */
+  body.session-active .right-panel { display:none !important; }
+  body.session-active .left-panel { display:block !important; }
+
+/* Styling specifics for both panels (keep the original layout but allow them to fill width) */
+  .merchant { display:flex; gap:12px; align-items:center; margin-bottom:12px }
+  .merchant .photo {width:64px;height:64px;border-radius:12px;background:linear-gradient(145deg,#fff,#f2f8ff);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:20px;border:1px solid rgba(11,99,215,0.06)}
+  .merchant-info {display:flex;flex-direction:column;}
+  .merchant-info .name {font-weight:700;font-size:16px}
+  .merchant-info .desc {font-size:13px;color:var(--muted)}
+
+  .trust-row {display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
+  .trust {display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:#f7fbff;border:1px solid rgba(11,99,215,0.06)}
+  .lock {width:16px;height:16px;border-radius:3px;background:linear-gradient(90deg,#2bb673,#0b63d7);display:inline-block}
+  .small-help {font-size:13px;color:var(--muted)}
+
+  .amount-card {margin-top:12px;padding:16px;border-radius:12px;background:linear-gradient(90deg,#f5faff,#ffffff);border:1px solid rgba(10,20,40,0.03);}
+  .amount {font-size:28px;font-weight:700;color:var(--accent)}
+  .amount-sub {font-size:13px;color:var(--muted); margin-top:6px}
+
+  .session {margin-top:12px;padding:12px;border-radius:10px;background:linear-gradient(90deg,#fff,#fbfdff);display:flex;align-items:center;justify-content:space-between;border:1px dashed rgba(11,99,215,0.06)}
+  .timer {font-size:18px;font-weight:700;color:var(--danger);display:flex;gap:6px;align-items:center}
+  .timer .label{font-size:12px;color:var(--muted);font-weight:500}
+  .session .meta {font-size:13px;color:var(--muted);max-width:200px;text-align:right}
+
+  .powered {display:flex;flex-direction:column;gap:10px;margin-top:10px}
+  .partners {display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .partner-item {display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+  .partner-item img {width:48px;height:48px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.04);background:white;padding:6px}
+
+  .security-box{margin-top:12px;padding:12px;border-radius:10px;background:#fcfffb;border:1px solid rgba(43,182,115,0.08);display:flex;gap:10px;align-items:center}
+  .security-box .s-left{font-weight:600;color:var(--success)} 
+  .security-box .s-right{font-size:13px;color:var(--muted)}
+
+/* Right panel (form) */
+  .right-panel { display:block }
+  .payment-card{padding:18px;border-radius:12px;display:flex;flex-direction:column;gap:12px}
+  .field {display:flex;flex-direction:column;gap:8px}
+  .field label {font-size:13px;color:var(--muted);font-weight:600}
+  .field input[type="text"], .field input[type="number"]{ border-radius:10px;padding:12px 14px;border:1px solid rgba(8,20,40,0.06);font-size:15px; outline:none; }
+  .field input:focus{box-shadow:0 8px 18px rgba(11,99,215,0.06)}
+  .actions {display:flex;gap:12px;align-items:center;margin-top:6px}
+  .btn {padding:12px 16px;border-radius:12px;font-weight:700;background:linear-gradient(90deg,var(--accent),#2b8bff);color:white;border:none;cursor:pointer;box-shadow:0 10px 30px rgba(11,99,215,0.12)}
+  .btn.ghost {background:transparent;color:var(--accent);border:1px solid rgba(11,99,215,0.08);font-weight:600}
+  .caption {font-size:13px;color:var(--muted)}
+
+/* Dashboard grid inside left-panel (two sub-sections) */
+  .dashboard-grid { display:grid; grid-template-columns: 1fr 420px; gap:22px; align-items:start }
+  .qr-stage { display:flex; gap:18px; align-items:center; padding:14px; border-radius:12px; background:linear-gradient(90deg,#fff,#fbfdff); border:1px solid rgba(8,20,40,0.03); }
+  .qr-block { width:100%; display:flex; flex-direction:column; gap:12px; align-items:center }
+  .qr-thumb { width:320px; height:320px; border-radius:12px; background:#fff; border:1px solid rgba(8,20,40,0.04); display:flex; align-items:center; justify-content:center; padding:12px; box-shadow:0 6px 20px rgba(11,99,215,0.04) }
+  .qr-thumb img { max-width:100%; max-height:100%; border-radius:8px }
+  .qr-meta { display:flex; flex-direction:column; gap:6px; align-items:center }
+  .txn { font-size:12px; color:var(--muted); word-break:break-all }
+  .copy-btn { padding:8px 10px; border-radius:8px; background:#eef6ff; border:1px solid rgba(11,99,215,0.06); cursor:pointer; font-weight:600 }
+
+  .status-block { display:flex; flex-direction:column; gap:12px }
+  .status-text { font-weight:700; font-size:18px }
+  .status-desc { font-size:13px; color:var(--muted) }
+  .progress { height:8px; background:#eef6ff; border-radius:999px; overflow:hidden }
+  .progress > i { display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#38b0ff); transition:width 400ms ease }
+  .processing-area { display:flex; gap:12px; align-items:center }
+  .spinner { width:44px; height:44px; border-radius:50%; border:6px solid rgba(11,99,215,0.08); border-top-color:var(--accent); animation:spin 1s linear infinite; }
+  @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+  .small-help2{ font-size:13px; color:var(--muted) }
+  .logobar{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-top:8px }
+  .pay-item { display:flex; gap:8px; align-items:center; padding:8px 10px; border-radius:8px; background:#fff; border:1px solid rgba(8,20,40,0.03); min-width:120px }
+  .pay-item img{ width:34px; height:34px }
+  .pay-item .label{ font-size:13px; color:var(--muted) }
+
+/* footer/disclaimers */
+  .disclaimer { margin-top:12px; padding:12px; border-radius:10px; background:#fff; border:1px solid rgba(8,20,40,0.03); font-size:13px; color:var(--muted) }
+  .footer-row{ display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px }
+  .footer-left{ font-size:13px; color:var(--muted) }
+  .footer-right{ display:flex; gap:8px; align-items:center }
+  .s-link{ font-size:13px; color:var(--muted); border-left:1px solid rgba(8,20,40,0.03); padding-left:12px; margin-left:8px }
+
+/* success modal */
+  .modal { position:fixed; left:0; top:0; width:100%; height:100%; display:none; align-items:center; justify-content:center; background:rgba(8,20,40,0.45); z-index:80 }
+  .modal .box{ width:520px; background:linear-gradient(90deg,#fff,#fbfdff); padding:28px; border-radius:12px; text-align:center; box-shadow:0 14px 50px rgba(8,20,40,0.18) }
+  .tick{ width:96px; height:96px; border-radius:50%; display:inline-grid; place-items:center; margin:0 auto 12px; background:linear-gradient(90deg,#dff7e8,#fff); border:1px solid rgba(43,182,115,0.08) }
+  .tick svg{ width:56px; height:56px; fill:var(--success) }
+  .modal h2{ margin:6px 0 2px }
+  .modal p{ font-size:13px; color:var(--muted) }
+
+/* responsive rules */
+  @media(max-width:1100px){
+    .wrap{ padding:12px }
+    .qr-thumb{ width:260px; height:260px }
+    .dashboard-grid { grid-template-columns: 1fr 360px }
+  }
+  @media(max-width:780px){
+    /* On mobile we always show the form first; the dashboard stacks naturally when active */
+    .payment-card{ padding:14px }
+    .partner-item img{ width:36px; height:36px }
+    .modal .box{ width:92% }
+    .field input[type="text"], .field input[type="number"]{ width:100% }
+    .actions{ flex-direction:column; align-items:stretch }
+    .actions .btn{ width:100% }
+    /* dashboard grid stacks on small screens */
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .qr-thumb { width:100%; height:auto; padding:18px }
+    .qr-block { align-items:flex-start }
+    .qr-meta { align-items:flex-start }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">KM</div>
+      <div>
+        <div class="title">Kuber-mail</div>
+        <div class="sub">Checkout • UPI QR • Instant</div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <div class="badge">Secure • Encrypted</div>
+      <div class="small-muted">Need help? <a href="https://avijitsingh.ct.ws/?i=1#contact-section">Contact Avijit Singh</a></div>
+    </div>
+  </header>
+
+  <!-- Persistent success banner (appears after payment and remains visible after closing modal) -->
+  <div id="successBanner" class="success-banner" role="status" aria-live="polite">
+    Payment Successful — Thank you! Transaction completed successfully.
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Right Panel (form area) - VISIBLE ON LOAD -->
+    <section class="panel right-panel" id="rightPanel">
+
+      <div class="payment-card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:700;font-size:16px">Complete Payment</div>
+            <div class="caption">Enter details and generate a UPI QR. Scan with your UPI app to pay.</div>
+          </div>
+          <div class="caption">Transaction secure <strong>•</strong> No redirects</div>
+        </div>
+
+        <!-- Form -->
+        <div class="field">
+          <label for="amount">Amount (INR)</label>
+          <input id="amount" type="number" min="1" placeholder="e.g. 499" />
+        </div>
+
+        <div class="field">
+          <label for="payer">Payer name (as per bank)</label>
+          <input id="payer" type="text" placeholder="Enter full name" />
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center" class="actions">
+          <button class="btn" id="generateBtn" onclick="confirmAndCreateOrder()">Generate QR & Start Session</button>
+          <button class="btn ghost" id="helpBtn" onclick="openSupport()">Contact Support</button>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;margin-top:8px;align-items:center">
+          <div class="caption">Processing: <strong id="process-badge">Idle</strong></div>
+          <div class="caption">Txn id: <span id="txn-id">—</span></div>
+        </div>
+      </div>
+
+      <div class="disclaimer">
+        <strong>Important</strong>
+        <div style="margin-top:8px">
+          <ul style="margin:8px 0 0 18px;color:var(--muted)">
+            <li>Do not refresh or navigate away while payment is in progress.</li>
+            <li>Payments are routed via UPI network; your bank may show incoming request under "UPI Collect".</li>
+            <li>For failed payments, share screenshot & order id with <strong>support@devlord.com</strong>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-row">
+        <div class="footer-left">
+          <div>© <strong>Avijit Singh</strong> — DevLord-Avijit. All rights reserved.</div>
+          <div class="s-link">Privacy • Terms • Refund Policy</div>
+        </div>
+
+        <div class="footer-right">
+          <div class="small-muted">Powered by UPI • FamX</div>
+          <div style="font-size:12px;color:var(--muted)">Secure</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Left Panel (order info + QR) - HIDDEN UNTIL SESSION STARTS -->
+    <aside class="panel left-panel" id="leftPanel">
+
+      <!-- Dashboard grid: TWO SUB-SECTIONS for desktop, stacks on mobile -->
+      <div class="dashboard-grid">
+
+        <!-- LEFT: QR + Merchant summary (primary visual focus) -->
+        <div>
+          <div class="merchant">
+            <div class="photo">AS</div>
+            <div class="merchant-info">
+              <div class="name">Avijit Singh</div>
+              <div class="desc">Merchant ID: <strong id="merchant-id">@avijitsingh</strong></div>
+            </div>
+          </div>
+
+          <div class="amount-card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-size:13px;color:var(--muted)">Amount to pay</div>
+                <div class="amount" id="left-amount">₹ 0.00</div>
+                <div class="amount-sub">including GST & convenience fee</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:12px;color:var(--muted)">Order</div>
+                <div style="font-weight:700">#<span id="left-order">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- QR stage: placed prominently -->
+          <div class="qr-stage" id="qr-stage" style="display:none;flex-direction:column">
+            <div class="qr-block">
+              <div class="qr-thumb" id="qr-container">
+                <img id="qr-image" src="" alt="QR Code" style="display:none" />
+                <div id="qr-placeholder" style="text-align:center;color:var(--muted);">
+                  QR will appear here after generating the order
+                </div>
+              </div>
+
+              <div class="qr-meta">
+                <div class="txn"> <strong id="tx-order"></strong></div>
+                <div class="txn"> <strong id="tx-amount"></strong></div>
+                
+              </div>
+            </div>
+          </div>
+
+          <div class="powered">
+            <div class="small-help">Payments powered by: FamX | UPI</div>
+            
+          </div>
+
+          <div class="security-box">
+            <div class="s-left">✔ Secured by UPI</div>
+            <div class="s-right"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Status / progress / logs (secondary info) -->
+        <div class="status-block">
+          <div class="status-text" id="status-text">Status: <span id="status-phrase">PENDING</span></div>
+          <div class="status-desc" id="status-desc">Waiting for payment - open your UPI app and scan the QR code or use UPI intent.</div>
+
+          <div class="session">
+            <div class="timer" id="left-session" style="display:flex">
+              <div style="font-size:12px;color:var(--muted);margin-right:6px">Session</div>
+              <div id="session-timer">--:--</div>
+            </div>
+            <div class="meta">
+              <div style="font-weight:700">Expires automatically</div>
+              <div style="font-size:12px;color:var(--muted)">Keep this page open until transaction completes</div>
+            </div>
+          </div>
+
+          <div class="processing-area">
+            <div class="spinner" id="spinner" style="display:none"></div>
+            <div style="flex:1">
+              <div class="progress" aria-hidden="true">
+                <i id="progress-bar" style="width:0%"></i>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:8px">
+                <div class="small-help2">Do not close or refresh this page</div>
+                <div class="small-help2">Last checked: <span id="last-checked">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="logobar">
+            <div class="pay-item"><img src="https://img.icons8.com/color/48/000000/google-pay-india.png"/><div class="label"></div></div>
+            <div class="pay-item"><img src="https://th.bing.com/th/id/OIP.tuYalZe2SOHuvjtZkDDJ5gHaFf?r=0&o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3"/><div class="label"></div></div>
+            <div class="pay-item"><img src="https://img.icons8.com/color/48/000000/paytm.png"/><div class="label"></div></div>
+            <div class="pay-item"><img src="https://miro.medium.com/v2/resize:fit:787/1*DWq0iZ8UfEmfCYvtj1ejyg.png"/><div class="label"></div></div>
+            <div class="pay-item"><img src="https://img.icons8.com/color/48/000000/apple-pay.png"/><div class="label"></div></div>
+            <div class="pay-item"><img src="https://th.bing.com/th/id/OIP.ewkdQwESLqiNQdobj6SbYwHaHa?r=0&o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3"/><div class="label"></div></div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn ghost" id="retryBtn" style="display:none" onclick="retry()">Generate New QR</button>
+            <button class="btn" id="cancelBtn" style="background:#f3f4f6;color:#111;display:none" onclick="cancelOrder()">Cancel</button>
+          </div>
+
+          <div class="disclaimer" style="margin-top:12px">
+            <strong>Refund / Failure</strong>
+            <div style="margin-top:8px;font-size:13px;color:var(--muted)">
+              If payment fails or you see incorrect billing, contact <strong>support@devlord.com</strong> with your order id and payment screenshot. Refunds processed within 3–7 business days.
+            </div>
+          </div>
+
+          <div style="margin-top:12px;font-size:13px;color:var(--muted)">
+            <div>Made by <strong>Avijit Singh</strong> • NPCI Terms apply</div>
+          </div>
+        </div>
+
+      </div> <!-- end dashboard-grid -->
+
+    </aside>
+
+  </div>
+</div>
+
+<!-- Success modal -->
+<div class="modal" id="successModal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="box">
+    <div class="tick">
+      <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+    </div>
+    <h2 id="successTitle">Payment Received</h2>
+    <p id="successMsg">Thanks! Your payment has been successfully processed.</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:14px">
+      <button class="btn" onclick="closeSuccess()">Close</button>
+      <button class="btn ghost" onclick="viewReceipt()">View Receipt</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Core client logic. Key change: toggle body.session-active so only one section shows at a time.
+let orderId = null;
+let txnId = null;
+let timerInterval = null;
+let pollInterval = null;
+let lastData = null;
+let sessionExpiresAt = null;
+
+function secondsToMMSS(sec){
+  if(sec <= 0) return '00:00';
+  const m = Math.floor(sec/60).toString().padStart(2,'0');
+  const s = Math.floor(sec%60).toString().padStart(2,'0');
+  return `${m}:${s}`;
+}
+
+function confirmAndCreateOrder(){
+  const payer = document.getElementById('payer').value.trim();
+  const amount = parseFloat(document.getElementById('amount').value);
+  if(!payer){ alert('Please enter payer name'); return; }
+  if(!amount || amount <= 0){ alert('Enter valid amount'); return; }
+
+  const ok = confirm(`Create payment session for ₹${amount.toFixed(2)} by ${payer} ?`);
+  if(!ok) return;
+
+  createOrder(amount, payer);
+}
+
+function createOrder(amount, expected_payer){
+  document.getElementById('process-badge').innerText = 'Creating order...';
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('generateBtn').style.opacity = 0.7;
+
+  // Simulated server call -- replace with your actual POST endpoint
+  fetch('/create_order', {
+    method:'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ amount, expected_payer })
+  }).then(async r=>{
+    if(!r.ok){ const text = await r.text(); throw new Error(text || 'Server error'); }
+    return r.json();
+  }).then(data => {
+    txnId = data && data.txn_id ? String(data.txn_id) : null;
+    orderId = data && data.order_id ? String(data.order_id) : null;
+    const qr = data && (data.qr_data_uri || data.qr) ? (data.qr_data_uri || data.qr) : '';
+    const expiresAt = data && data.expires_at ? new Date(data.expires_at) : new Date(Date.now()+5*60*1000);
+
+    lastData = data || {};
+
+    document.getElementById('txn-id').innerText = txnId || '—';
+    document.getElementById('left-amount').innerText = `₹ ${amount.toFixed(2)}`;
+    document.getElementById('left-order').innerText = orderId || '—';
+    document.getElementById('tx-order').innerText = orderId || '—';
+    document.getElementById('tx-amount').innerText = `₹ ${amount.toFixed(2)}`;
+
+    // Toggle to single-section dashboard mode: hide form, show dashboard
+    document.body.classList.add('session-active');
+    document.getElementById('leftPanel').classList.add('show');
+
+    // Show QR stage
+    document.getElementById('qr-stage').style.display = 'flex';
+    const img = document.getElementById('qr-image');
+    const placeholder = document.getElementById('qr-placeholder');
+    if(qr){ img.src = qr; img.style.display = 'block'; placeholder.style.display = 'none'; }
+    else { img.style.display = 'none'; placeholder.style.display = 'block'; }
+
+    // UI updates
+    document.getElementById('generateBtn').style.display = 'none';
+    document.getElementById('retryBtn').style.display = 'none';
+    document.getElementById('cancelBtn').style.display = 'inline-block';
+    document.getElementById('process-badge').innerText = 'PENDING';
+    document.getElementById('status-phrase').innerText = 'PENDING';
+    document.getElementById('status-desc').innerText = 'Waiting for payment - scan QR or open UPI app';
+
+    document.getElementById('spinner').style.display = 'block';
+    animateProgress();
+
+    sessionExpiresAt = expiresAt;
+    startTimer(expiresAt);
+
+    if(txnId){ startPolling(txnId); }
+    else {
+      document.getElementById('process-badge').innerText = 'NO_TXN';
+      document.getElementById('status-phrase').innerText = 'NO_TXN';
+      document.getElementById('status-desc').innerText = 'Server didn\'t return a transaction id. Please contact support or try again.';
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('cancelBtn').style.display = 'none';
+      document.getElementById('retryBtn').style.display = 'inline-block';
+    }
+
+    // Freeze inputs to prevent double submits while session is active
+    setInputsDisabled(true);
+
+  }).catch(err=>{
+    alert('Failed to create order: ' + err.message);
+    document.getElementById('process-badge').innerText = 'Idle';
+    document.getElementById('generateBtn').disabled = false;
+    document.getElementById('generateBtn').style.opacity = 1;
+  });
+}
+
+function startTimer(expiresAt){
+  clearInterval(timerInterval);
+  const timerEl = document.getElementById('session-timer');
+  timerEl.parentElement.style.display = 'flex';
+  timerEl.innerText = secondsToMMSS(Math.floor((expiresAt - new Date())/1000));
+  timerInterval = setInterval(()=>{
+    const secLeft = Math.floor((expiresAt - new Date())/1000);
+    timerEl.innerText = secondsToMMSS(secLeft);
+    if(secLeft <= 0){ clearInterval(timerInterval); onOrderExpired(); }
+  },1000);
+}
+
+function animateProgress(){
+  const bar = document.getElementById('progress-bar');
+  let percent = 8;
+  bar.style.width = `${percent}%`;
+  const id = setInterval(()=>{ percent += Math.random()*8; if(percent >= 78) { percent = 78; bar.style.width = `${percent}%`; clearInterval(id); } else bar.style.width = `${percent}%`; },700);
+}
+
+function startPolling(txn){ stopPolling(); checkOrder(txn); pollInterval = setInterval(()=>checkOrder(txn), 3000); updateLastChecked(); }
+function updateLastChecked(){ const d = new Date(); document.getElementById('last-checked').innerText = d.toLocaleTimeString(); }
+function stopPolling(){ if(pollInterval){ clearInterval(pollInterval); pollInterval = null; } }
+
+function checkOrder(txn){ if(!txn) return; updateLastChecked(); fetch(`/order/${encodeURIComponent(txn)}`).then(r=>{ if(!r.ok) throw new Error('Status fetch failed'); return r.json(); }).then(data=>{ const status = (data.status || '').toUpperCase(); document.getElementById('process-badge').innerText = status; document.getElementById('status-phrase').innerText = status; document.getElementById('status-desc').innerText = data.message || ''; if(status === 'PAID' || status === 'SUCCESS'){ onOrderPaid(data); } else if(status === 'EXPIRED' || status === 'FAILED'){ onOrderFailed(data); } }).catch(err=>{ console.error('Poll error', err); }); }
+
+function onOrderPaid(data){ stopPolling(); clearInterval(timerInterval); document.getElementById('spinner').style.display = 'none'; document.getElementById('progress-bar').style.width = '100%'; document.getElementById('status-desc').innerText = data.message || 'Payment received'; document.getElementById('process-badge').innerText = 'PAID'; showSuccess('Payment Successful', 'Payment received on ' + (data.paid_at ? new Date(data.paid_at).toLocaleString() : new Date().toLocaleString())); lastData = data; if(data && data.txn_id) txnId = data.txn_id; }
+
+function onOrderFailed(data){ stopPolling(); clearInterval(timerInterval); document.getElementById('spinner').style.display = 'none'; document.getElementById('process-badge').innerText = (data.status || 'FAILED'); document.getElementById('status-phrase').innerText = (data.status || 'FAILED'); document.getElementById('status-desc').innerText = data.message || 'Payment failed or expired. Please retry.'; document.getElementById('retryBtn').style.display = 'inline-block'; document.getElementById('cancelBtn').style.display = 'none'; setInputsDisabled(false); }
+
+function onOrderExpired(){ stopPolling(); clearInterval(timerInterval); document.getElementById('spinner').style.display = 'none'; document.getElementById('process-badge').innerText = 'EXPIRED'; document.getElementById('status-phrase').innerText = 'EXPIRED'; document.getElementById('status-desc').innerText = 'QR expired. Generate a new QR to try again.'; document.getElementById('retryBtn').style.display = 'inline-block'; document.getElementById('cancelBtn').style.display = 'none'; setInputsDisabled(false); }
+
+function retry(){ // reset UI to initial state (form visible)
+  document.getElementById('amount').value = '';
+  document.getElementById('payer').value = '';
+  document.getElementById('qr-stage').style.display = 'none';
+  document.getElementById('generateBtn').style.display = 'inline-block';
+  document.getElementById('retryBtn').style.display = 'none';
+  document.getElementById('process-badge').innerText = 'Idle';
+  document.getElementById('status-phrase').innerText = 'IDLE';
+  document.getElementById('status-desc').innerText = '';
+  txnId = null; orderId = null; lastData = null;
+  clearInterval(timerInterval); clearInterval(pollInterval);
+  document.getElementById('session-timer').innerText = '--:--';
+  document.getElementById('left-amount').innerText = '₹ 0.00';
+  document.getElementById('left-order').innerText = '—';
+
+  // remove session active class -> show form again
+  document.body.classList.remove('session-active');
+  document.getElementById('leftPanel').classList.remove('show');
+
+  document.getElementById('successBanner').style.display = 'none';
+  setInputsDisabled(false);
+  document.getElementById('generateBtn').disabled = false;
+  document.getElementById('generateBtn').style.opacity = 1;
+}
+
+function cancelOrder(){ if(!confirm('Cancel this payment session?')) return; retry(); }
+function copyTxn(){ if(!txnId){ alert('No txn id'); return; } navigator.clipboard.writeText(txnId).then(()=>alert('Txn id copied')).catch(()=>alert('Copy failed')); }
+function printReceipt(){ window.print(); }
+
+function showSuccess(title, msg){ document.getElementById('successTitle').innerText = title; document.getElementById('successMsg').innerText = msg; const m = document.getElementById('successModal'); m.style.display = 'flex'; m.setAttribute('aria-hidden','false'); const banner = document.getElementById('successBanner'); if(banner){ banner.innerText = `${title} — ${msg}`; } }
+
+function closeSuccess(){ const m = document.getElementById('successModal'); m.style.display = 'none'; m.setAttribute('aria-hidden','true'); const banner = document.getElementById('successBanner'); if(banner){ banner.style.display = 'block'; }
+  document.getElementById('process-badge').innerText = 'PAID'; document.getElementById('status-phrase').innerText = 'PAID'; document.getElementById('status-desc').innerText = lastData && lastData.message ? lastData.message : 'Payment received successfully.'; document.getElementById('spinner').style.display = 'none'; document.getElementById('progress-bar').style.width = '100%'; stopPolling(); clearInterval(timerInterval); setInputsDisabled(true); }
+
+function viewReceipt(){ alert('Open /receipt/' + (orderId || txnId || '—')); }
+
+function openSupport(){ window.location.href = 'mailto:support@devlord.com?subject=Help%20with%20payment'; }
+
+function setInputsDisabled(disabled){
+  try{
+    const amount = document.getElementById('amount');
+    const payer = document.getElementById('payer');
+    const generate = document.getElementById('generateBtn');
+    const retryBtn = document.getElementById('retryBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const helpBtn = document.getElementById('helpBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const printBtn = document.getElementById('printBtn');
+
+    if(amount){ amount.disabled = disabled; if(disabled) amount.setAttribute('readonly',''); else amount.removeAttribute('readonly'); }
+    if(payer){ payer.disabled = disabled; if(disabled) payer.setAttribute('readonly',''); else payer.removeAttribute('readonly'); }
+    if(generate){ generate.disabled = disabled; generate.style.opacity = disabled ? 0.6 : 1; }
+    if(retryBtn){ retryBtn.disabled = disabled; retryBtn.style.opacity = disabled ? 0.6 : 1; }
+    if(cancelBtn){ cancelBtn.disabled = disabled; cancelBtn.style.opacity = disabled ? 0.6 : 1; }
+    if(helpBtn){ helpBtn.disabled = disabled; helpBtn.style.opacity = disabled ? 0.6 : 1; }
+    if(copyBtn){ copyBtn.disabled = disabled; copyBtn.style.opacity = disabled ? 0.6 : 1; }
+    if(printBtn){ printBtn.disabled = disabled; printBtn.style.opacity = disabled ? 0.6 : 1; }
+  }catch(e){ console.warn('setInputsDisabled error', e); }
+}
+
+window.addEventListener('beforeunload', function(e){ if(txnId){ const msg = "Payment session is in progress. Leaving the page may cancel the payment."; (e || window.event).returnValue = msg; return msg; } });
+
+// Protect from accidental overwrites in console
+Object.defineProperty(window, 'txnId', { configurable: true, enumerable: true, get() { return txnId; }, set(v) { txnId = (v && typeof v === 'string') ? v : txnId; } });
+Object.defineProperty(window, 'orderId', { configurable: true, enumerable: true, get() { return orderId; }, set(v) { orderId = (v && typeof v === 'string') ? v : orderId; } });
+
+</script>
+</body>
+</html>

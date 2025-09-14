@@ -4,3 +4,5 @@ qrcode
 imapclient
 pyzmail36
 python-dotenv
+flask
+gunicorn

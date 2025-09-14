@@ -1,0 +1,6 @@
+Flask
+Flask-Cors
+qrcode
+imapclient
+pyzmail36
+python-dotenv

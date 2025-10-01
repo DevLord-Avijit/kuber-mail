@@ -1,6 +1,6 @@
-Flask==2.3.4
-Flask-Cors==4.0.0
-qrcode==7.4.2
-imapclient==2.3.0
-pyzmail36==1.0.5
-python-dotenv==1.0.0
+Flask
+Flask-Cors
+qrcode
+imapclient
+pyzmail36
+python-dotenv
